@@ -1080,6 +1080,25 @@ class TestProcessMetadataFiltersMerge:
         })
         assert result == {"status": "pending"}
 
+    def test_nested_or_not_inside_and(self, mock_sqlite, mock_llm_factory, mock_vector_factory, mock_embedder_factory):
+        """Nested OR/NOT inside AND must become $or/$not, not literal field names (issue #7664)."""
+        memory = self._make_memory(mock_sqlite, mock_llm_factory, mock_vector_factory, mock_embedder_factory)
+        result = memory._process_metadata_filters({
+            "user_id": "alice",
+            "AND": [
+                {"OR": [{"category": "work"}, {"category": "personal"}]},
+                {"priority": {"gte": 5}},
+                {"NOT": [{"status": "archived"}]},
+            ],
+        })
+        assert result == {
+            "user_id": "alice",
+            "$or": [{"category": "work"}, {"category": "personal"}],
+            "priority": {"gte": 5},
+            "$not": [{"status": "archived"}],
+        }
+        assert "OR" not in result and "NOT" not in result and "AND" not in result
+
 
 # --- Issue #3040: reset() should clean up graph database ---
 

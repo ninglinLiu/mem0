@@ -1580,12 +1580,16 @@ class Memory(MemoryBase):
 
         for key, value in metadata_filters.items():
             if key == "AND":
-                # Logical AND: combine multiple conditions
+                # Logical AND: combine multiple conditions (including nested AND/OR/NOT)
                 if not isinstance(value, list):
                     raise ValueError("AND operator requires a list of conditions")
                 for condition in value:
-                    for sub_key, sub_value in condition.items():
-                        merge_filters(processed_filters, process_condition(sub_key, sub_value))
+                    if not isinstance(condition, dict):
+                        raise ValueError("AND operator requires a list of filter dicts")
+                    merge_filters(
+                        processed_filters,
+                        self._process_metadata_filters(condition),
+                    )
             elif key == "OR":
                 # Logical OR: Pass through to vector store for implementation-specific handling
                 if not isinstance(value, list) or not value:
@@ -1593,20 +1597,35 @@ class Memory(MemoryBase):
                 # Store OR conditions in a way that vector stores can interpret
                 processed_filters["$or"] = []
                 for condition in value:
-                    or_condition = {}
-                    for sub_key, sub_value in condition.items():
-                        merge_filters(or_condition, process_condition(sub_key, sub_value))
-                    processed_filters["$or"].append(or_condition)
+                    if not isinstance(condition, dict):
+                        raise ValueError("OR operator requires a list of filter dicts")
+                    # Nested AND/OR/NOT inside an OR arm must be processed too
+                    if any(k in condition for k in ("AND", "OR", "NOT")):
+                        processed_filters["$or"].append(
+                            self._process_metadata_filters(condition)
+                        )
+                    else:
+                        or_condition = {}
+                        for sub_key, sub_value in condition.items():
+                            merge_filters(or_condition, process_condition(sub_key, sub_value))
+                        processed_filters["$or"].append(or_condition)
             elif key == "NOT":
                 # Logical NOT: Pass through to vector store for implementation-specific handling
                 if not isinstance(value, list) or not value:
                     raise ValueError("NOT operator requires a non-empty list of conditions")
                 processed_filters["$not"] = []
                 for condition in value:
-                    not_condition = {}
-                    for sub_key, sub_value in condition.items():
-                        merge_filters(not_condition, process_condition(sub_key, sub_value))
-                    processed_filters["$not"].append(not_condition)
+                    if not isinstance(condition, dict):
+                        raise ValueError("NOT operator requires a list of filter dicts")
+                    if any(k in condition for k in ("AND", "OR", "NOT")):
+                        processed_filters["$not"].append(
+                            self._process_metadata_filters(condition)
+                        )
+                    else:
+                        not_condition = {}
+                        for sub_key, sub_value in condition.items():
+                            merge_filters(not_condition, process_condition(sub_key, sub_value))
+                        processed_filters["$not"].append(not_condition)
             else:
                 merge_filters(processed_filters, process_condition(key, value))
 
@@ -3268,12 +3287,16 @@ class AsyncMemory(MemoryBase):
 
         for key, value in metadata_filters.items():
             if key == "AND":
-                # Logical AND: combine multiple conditions
+                # Logical AND: combine multiple conditions (including nested AND/OR/NOT)
                 if not isinstance(value, list):
                     raise ValueError("AND operator requires a list of conditions")
                 for condition in value:
-                    for sub_key, sub_value in condition.items():
-                        merge_filters(processed_filters, process_condition(sub_key, sub_value))
+                    if not isinstance(condition, dict):
+                        raise ValueError("AND operator requires a list of filter dicts")
+                    merge_filters(
+                        processed_filters,
+                        self._process_metadata_filters(condition),
+                    )
             elif key == "OR":
                 # Logical OR: Pass through to vector store for implementation-specific handling
                 if not isinstance(value, list) or not value:
@@ -3281,20 +3304,35 @@ class AsyncMemory(MemoryBase):
                 # Store OR conditions in a way that vector stores can interpret
                 processed_filters["$or"] = []
                 for condition in value:
-                    or_condition = {}
-                    for sub_key, sub_value in condition.items():
-                        merge_filters(or_condition, process_condition(sub_key, sub_value))
-                    processed_filters["$or"].append(or_condition)
+                    if not isinstance(condition, dict):
+                        raise ValueError("OR operator requires a list of filter dicts")
+                    # Nested AND/OR/NOT inside an OR arm must be processed too
+                    if any(k in condition for k in ("AND", "OR", "NOT")):
+                        processed_filters["$or"].append(
+                            self._process_metadata_filters(condition)
+                        )
+                    else:
+                        or_condition = {}
+                        for sub_key, sub_value in condition.items():
+                            merge_filters(or_condition, process_condition(sub_key, sub_value))
+                        processed_filters["$or"].append(or_condition)
             elif key == "NOT":
                 # Logical NOT: Pass through to vector store for implementation-specific handling
                 if not isinstance(value, list) or not value:
                     raise ValueError("NOT operator requires a non-empty list of conditions")
                 processed_filters["$not"] = []
                 for condition in value:
-                    not_condition = {}
-                    for sub_key, sub_value in condition.items():
-                        merge_filters(not_condition, process_condition(sub_key, sub_value))
-                    processed_filters["$not"].append(not_condition)
+                    if not isinstance(condition, dict):
+                        raise ValueError("NOT operator requires a list of filter dicts")
+                    if any(k in condition for k in ("AND", "OR", "NOT")):
+                        processed_filters["$not"].append(
+                            self._process_metadata_filters(condition)
+                        )
+                    else:
+                        not_condition = {}
+                        for sub_key, sub_value in condition.items():
+                            merge_filters(not_condition, process_condition(sub_key, sub_value))
+                        processed_filters["$not"].append(not_condition)
             else:
                 merge_filters(processed_filters, process_condition(key, value))
 
