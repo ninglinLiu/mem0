@@ -166,7 +166,9 @@ interface PGVectorConfig extends VectorStoreConfig {
   port?: number;
   connectionString?: string;
   ssl?: ClientConfig["ssl"];
-  embeddingModelDims: number;
+  embeddingModelDims?: number;
+  /** Fallback when embeddingModelDims is unset (matches Milvus/Memory resolution). */
+  dimension?: number;
   diskann?: boolean;
   hnsw?: boolean;
 }
@@ -290,7 +292,13 @@ export class PGVector implements VectorStore {
 
       const collections = await this.listCols();
       if (!collections.includes(this.collectionName)) {
-        await this.createCol(this.config.embeddingModelDims);
+        const dims = this.config.embeddingModelDims ?? this.config.dimension;
+        if (dims === undefined || dims === null || Number.isNaN(Number(dims))) {
+          throw new Error(
+            "PGVector requires embeddingModelDims or dimension to create the vector column",
+          );
+        }
+        await this.createCol(Number(dims));
       }
     } catch (error) {
       console.error("Error during initialization:", error);

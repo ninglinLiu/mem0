@@ -26,7 +26,9 @@ function escapeRedisTagValue(value: unknown): string {
 interface RedisConfig extends VectorStoreConfig {
   redisUrl: string;
   collectionName: string;
-  embeddingModelDims: number;
+  embeddingModelDims?: number;
+  /** Fallback when embeddingModelDims is unset (matches Milvus/Memory resolution). */
+  dimension?: number;
   username?: string;
   password?: string;
 }
@@ -165,6 +167,13 @@ export class RedisDB implements VectorStore {
     this.indexName = config.collectionName;
     this.indexPrefix = `mem0:${config.collectionName}`;
 
+    const dims = config.embeddingModelDims ?? config.dimension;
+    if (dims === undefined || dims === null || Number.isNaN(Number(dims))) {
+      throw new Error(
+        "RedisDB requires embeddingModelDims or dimension to create the vector index",
+      );
+    }
+
     this.schema = {
       index: {
         name: this.indexName,
@@ -176,7 +185,7 @@ export class RedisDB implements VectorStore {
             ...field,
             attrs: {
               ...field.attrs,
-              dims: config.embeddingModelDims,
+              dims: Number(dims),
             },
           };
         }
