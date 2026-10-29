@@ -542,18 +542,25 @@ class PGVector(VectorStoreBase):
             results = cur.fetchall()
         return [[OutputData(id=str(r[0]), score=None, payload=r[1]) for r in results]]
 
+    def close(self) -> None:
+        """Close the owned connection pool. Safe to call more than once."""
+        pool = getattr(self, "connection_pool", None)
+        if pool is None:
+            return
+        try:
+            if PSYCOPG_VERSION == 3:
+                pool.close()
+            else:
+                pool.closeall()
+        except Exception:
+            pass
+        self.connection_pool = None
+
     def __del__(self) -> None:
         """
         Close the database connection pool when the object is deleted.
         """
-        try:
-            # Close pool appropriately
-            if PSYCOPG_VERSION == 3:
-                self.connection_pool.close()
-            else:
-                self.connection_pool.closeall()
-        except Exception:
-            pass
+        self.close()
 
     def reset(self) -> None:
         """Reset the index by deleting and recreating it."""

@@ -2174,10 +2174,14 @@ class Memory(MemoryBase):
         display_first_run_notice(self, "sync", "reset")
 
     def close(self):
-        """Release resources held by this Memory instance (SQLite connections, etc.)."""
+        """Close history and owned vector-store resources supported by the provider."""
         if hasattr(self, "db") and self.db is not None:
             self.db.close()
             self.db = None
+        for name in ("vector_store", "_entity_store", "_telemetry_vector_store"):
+            store = getattr(self, name, None)
+            if store is not None:
+                store.close()
 
     def __enter__(self):
         return self
@@ -3896,10 +3900,14 @@ class AsyncMemory(MemoryBase):
         await display_first_run_notice_async(self, "async", "reset")
 
     def close(self):
-        """Release resources held by this AsyncMemory instance."""
+        """Close history and owned vector-store resources supported by the provider."""
         if hasattr(self, "db") and self.db is not None:
             self.db.close()
             self.db = None
+        for name in ("vector_store", "_entity_store", "_telemetry_vector_store"):
+            store = getattr(self, name, None)
+            if store is not None:
+                store.close()
 
     async def __aenter__(self):
         return self
